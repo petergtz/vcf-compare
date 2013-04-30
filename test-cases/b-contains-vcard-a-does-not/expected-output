@@ -1,0 +1,11 @@
+File b contains vCard 'BEGIN:VCARD
+VERSION;=:2.1
+N;=:;Bob;;;
+TEL;TYPE=CELL:+123456789
+TEL;TYPE=HOME:+987654321
+EMAIL;TYPE=HOME:bob@whatever.com
+END:VCARD
+' which was not found in file a.
+File b contains vCard 'Alice' which was not found in file a.
+
+Anzahl Einträge: 0 
