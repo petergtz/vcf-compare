@@ -1,0 +1,12 @@
+Installation
+=============
+
+Please see file INSTALL.
+
+Usage:
+=======
+
+From the command line call
+
+    ./vcf-compare --help
+
