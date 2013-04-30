@@ -8,4 +8,5 @@ END:VCARD
 ' which was not found in file a.
 File b contains vCard 'Alice' which was not found in file a.
 
-Anzahl Einträge: 0 
+# entries in file a: 0 
+# entries in file b: 2 

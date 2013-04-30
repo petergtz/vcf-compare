@@ -1,31 +1,56 @@
 #!/usr/bin/perl -w
+
+#   Copyright 2013 Michael Goetz, Peter Goetz
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 use strict;
 
 use Text::vCard::Addressbook;
 use Getopt::Long qw(:config bundling);
 
+my $SCRIPT_NAME = "vcf-compare";
 my $VERSION = "0.1";
-my $USAGE = "USAGE: vcf-compare <file-a.vcf> <file-b.vcf>\n";
-
-GetOptions("version" => sub { print "vcf-compare $VERSION\n"; exit; },
-           "help" => sub { print "$USAGE\n"; exit; });
+my $USAGE = "USAGE: $SCRIPT_NAME <options> file-a.vcf file-b.vcf\n";
 
 
+my $fuzzy_factor = "5%";
+
+GetOptions("version" => sub { print "$SCRIPT_NAME $VERSION\n"; exit; },
+           "help" => sub { print "$USAGE\n"; exit; },
+           "fuzzy-factor=s" => \$fuzzy_factor);
 
 die $USAGE if ($#ARGV+1) != 2;
 
-my %vcards_a = build_hash(Text::vCard::Addressbook->new({ 'source_file' => $ARGV[0], } )->vcards());
-my %vcards_b = build_hash(Text::vCard::Addressbook->new({ 'source_file' => $ARGV[1], } )->vcards());
+my %vcards_a = build_hash(extract_vcards_from_file($ARGV[0]));
+my %vcards_b = build_hash(extract_vcards_from_file($ARGV[1]));
+compare_two_lists_of_vcards(\%vcards_a, \%vcards_b);  
 
-compare_two_lists_of_vcards(%vcards_a, %vcards_b);  
-my $z = keys(%vcards_a);
-print "\nAnzahl Einträge: $z \n";
+print "\n";
+print "# entries in file a: ".(scalar keys %vcards_a)." \n";
+print "# entries in file b: ".(scalar keys %vcards_b)." \n";
+
+
+
+sub extract_vcards_from_file {
+    return Text::vCard::Addressbook->new({ 'source_file' => shift, } )->vcards();
+}
 
 sub build_hash {
 	my @vcards = @_;
 	my %result;
 	foreach my $vcard (@vcards){
-		if (defined($vcard->fullname())){
+		if (defined $vcard->fullname()){
 			$result{$vcard->fullname()} = $vcard;
 		} else {
 			$result{$vcard->as_string()} = $vcard;
@@ -35,23 +60,23 @@ sub build_hash {
 }
 
 sub compare_two_lists_of_vcards {
-    my (%vcards_a, %vcards_b) = @_;
-	foreach my $vcard_a (values(%vcards_a)) {
+    my ($vcards_a, $vcards_b) = @_;
+	foreach my $vcard_a (values %$vcards_a) {
 		if (defined $vcard_a->fullname()) {
-			if (exists $vcards_b{$vcard_a->fullname()}) { 
-				compare_two_vcards($vcard_a, $vcards_b{$vcard_a->fullname()});
+			if (exists $vcards_b->{$vcard_a->fullname()}) { 
+				compare_two_vcards($vcard_a, $vcards_b->{$vcard_a->fullname()});
 			} else {
 				print "File a contains vCard '".$vcard_a->fullname()."' which was not found in file b.\n";
 			}
 		} else {
-			if (!exists $vcards_b{$vcard_a->as_string()}) {
+			if (!exists $vcards_b->{$vcard_a->as_string()}) {
 				print "File a contains vCard\n".$vcard_a->as_string()."\nwhich was not found in file b.\n";
 			}
 		}
 	}	
 	
-	foreach my $s (keys(%vcards_b)){
-		if (!exists $vcards_a{$s} ){
+	foreach my $s (keys %$vcards_b){
+		if (!exists $vcards_a->{$s} ){
 			print "File b contains vCard '$s' which was not found in file a.\n";
 		}
 	}
@@ -94,7 +119,7 @@ sub compare_two_vcards {
 sub contains_more_than_one_photo {
 	my ($vcard) = @_;
 	if (defined $vcard->photo()) {
-		my $photonodes=$vcard->get('PHOTO');   #Photoknoten holen
+		my $photonodes=$vcard->get('PHOTO');
 		return @$photonodes > 1;
 	} else {
 		return 0;
@@ -105,10 +130,10 @@ sub vcard_as_string_without_photos {
 	my ($vcard) = @_;
 	my $vcard_as_string = $vcard->as_string();
 	if (defined $vcard->photo()) {
-		my $photonodes = $vcard->get('PHOTO');   #Photoknoten holen
-		my $pattern = $$photonodes[0]->as_string();		   #String als Suchpattern formatieren
-		$pattern = quotemeta($pattern);		   #String als Suchpattern formatieren
-		$vcard_as_string =~ s/\r\n$pattern//;					   #Bild-String aus Karte entfernen
+		my $photonodes = $vcard->get('PHOTO');   
+		my $pattern = $$photonodes[0]->as_string();		   
+		$pattern = quotemeta($pattern);		   
+		$vcard_as_string =~ s/\r\n$pattern//;
 	}
 	return $vcard_as_string;
 }
@@ -141,7 +166,7 @@ sub photo_diff {
 		unlink "${name}1.dat", "${name}2.dat";
 		return 0;   
 	}
-	$output = qx/compare -fuzz 5% -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
+	$output = qx/compare -fuzz $fuzzy_factor -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
 	if ($output == 0){
 		return 1;   
 	} else {

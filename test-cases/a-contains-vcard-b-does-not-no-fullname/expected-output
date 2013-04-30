@@ -9,4 +9,5 @@ END:VCARD
 
 which was not found in file b.
 
-Anzahl Einträge: 2 
+# entries in file a: 2 
+# entries in file b: 1 
