@@ -1,190 +1,141 @@
 #!/usr/bin/perl -w
 use strict;
 
-
 use Text::vCard::Addressbook;
 
-sub photocompare{
-	open(DAT1,"> tempphoto1.dat")
-		or die "Fehler beim Öffnen von 'tempphoto1.dat': $!\n";
-	open(DAT2,"> tempphoto2.dat")
-		or die "Fehler beim Öffnen von 'tempphoto1.dat': $!\n";
-	print DAT1 $_[0];
-	print DAT2 $_[1];
+die "USAGE: vcf_compare.pl <file-a.vcf> <file-b.vcf>\n" if ($#ARGV+1) != 2;
 
-	my $output = qx/compare -metric AE tempphoto1.dat tempphoto2.dat diff.png 2>&1/;
-#	print "vor 1.vergleich: $output\n";
-	my $diff=0;
-	if ($output>0) {$diff=1;}
-	$output = qx/compare -fuzz 5% -metric AE tempphoto1.dat tempphoto2.dat diff.png 2>&1/;
-#	print "vor 2.vergleich: $output";
-	if ($output>0) {$diff+=1;}
-	return $diff;
-}
-
-
-
-my $ab_a = Text::vCard::Addressbook->new(
-      { 'source_file' => '/home/peter/Miscellaneous/Programmieren/vcf-compare/00004.vcf', } );
-      
-my $ab_b = Text::vCard::Addressbook->new(
-      { 'source_file' => '/home/peter/Miscellaneous/Programmieren/vcf-compare/00005.vcf', } );
-
-my @a=$ab_a->vcards();
-my @b=$ab_b->vcards();      
-
-my %ha;
-foreach $a (@a){
-	if (defined($a->fullname())){
-		$ha{$a->fullname()}=$a;
-	}else{
-		$ha{$a->as_string()}=$a;
-	}
-}
-my %hb;
-foreach $b (@b){
-	if (defined($b->fullname())){
-#		if ($b->fullname eq "107.7") {
-#			print $b->as_string();
-#		}
-		$hb{$b->fullname()}=$b;
-	}else{
-		$hb{$b->as_string()}=$b;
-	}
-}
-#print $hb{"Vergiftungszentrale"}->as_string;
-#$wert=$hb{"Vergiftungszentrale"};
-#if (defined($wert)) {
-#	print "Schlüssel gefunden\n";
-#}else{
-#	print "Schlüssel NICHT gefunden\n";
-#}
+my %vcards_a = build_hash(Text::vCard::Addressbook->new({ 'source_file' => $ARGV[0], } )->vcards());
+my %vcards_b = build_hash(Text::vCard::Addressbook->new({ 'source_file' => $ARGV[1], } )->vcards());
 	
-my $vc;
-my $vcfn;
-my $vcas;
+compare_two_lists_of_vcards(%vcards_a, %vcards_b);  
+my $z = keys(%vcards_a);
+print "\nAnzahl Einträge: $z \n";
 
-#my @schlussel=keys(%hb);
-#foreach (@schlussel){
-#	print $_;
-#}
-#foreach $vc (@a) {
-#	print $vc->as_string();
-#}
 
-foreach $vc (@a) {
-	if (defined($vcfn=$vc->fullname())){ #vc ist mit fullname
-#		print "...untersuche $vcfn...\n";
-		if (defined($hb{$vcfn})){        #es gibt eine Karte mit gleichem fullname in b
-		    #die Karten sind string-identisch:
-			if (!((my $t1=$vc->as_string()) eq (my $t2=$hb{$vcfn}->as_string()))){
-				#wenn nicht string-identisch: schauen, ob photos drin sind:
-				if (defined($vc->photo())||defined($hb{$vcfn}->photo())){
-					#photos sind im Spiel, jetzt alle Fälle abkaspern:
-					if (!(defined($vc->photo()))){
-						print "$vcfn aus Datei a hat kein Photo, aber Datei b schon\n";
-					}
-					if (!(defined($hb{$vcfn}->photo()))){
-						print "$vcfn aus Datei b hat kein Photo, aber Datei a schon\n";
-					}
-					if (defined($vc->photo())){
-						#--> alle Photooperationen für a ausführen:
-						#photo entfernen und restlichen inhalt vergleichen, wenn der ok ist dann photovergleich
-						my $photonodes1=$vc->get('PHOTO');   #Photoknoten holen
-						my $nodeanz1=@$photonodes1;			#Anzahl der Bilder checken (sollte nur 1 sein)
-						if ($nodeanz1!=1){
-							die ("$t1 hat komischerweise mehr als ein Bild\n");
-						}
-						my $pattern1=$$photonodes1[0]->as_string();	#Bild als string holen
-						$pattern1 = quotemeta($pattern1);			#String als Suchpattern formatieren
-						$t1 =~ s/\r\n$pattern1//;						#Bild-String aus Karte entfernen
-					}
-					if (defined($hb{$vcfn}->photo())){
-						#d.h. aber Datei b muss Photo haben, sonst wäre OR-Abfrage oben gescheitert
-						# --> alle Photooperationen für b ausführen:
-						my $photonodes2=$hb{$vcfn}->get('PHOTO');
-						my $nodeanz2=@$photonodes2;
-						if ($nodeanz2!=1){
-							die ("$t2 hat komischerweise mehr als ein Bild\n");
-						}
-						my $pattern2=$$photonodes2[0]->as_string();
-						$pattern2 = quotemeta($pattern2);
-						$t2 =~ s/\r\n$pattern2//;
-					}
+sub build_hash {
+	my @vcards = @_;
+	my %result;
+	foreach my $vcard (@vcards){
+		if (defined($vcard->fullname())){
+			$result{$vcard->fullname()} = $vcard;
+		} else {
+			$result{$vcard->as_string()} = $vcard;
+		}
+	}
+	return %result;
+}
 
-					# hier sind jetzt beide Karten OHNE Photos
-					if (!($t1 eq $t2)) {							#Karten ohne Bilder vergleichen
-						print "$vcfn aus Datei a und Datei b sind verschieden\n";
-						print "   a: $t1\n";
-						print "   b: $t2\n";
-					}
-					# else {print "$vcfn ohne Photos sind gleich\n";} # Aussage brauch ich nicht
-					#nur wenn in a UND b Photos definiert sind photovergleich machen
-					if (defined(my $p1=$vc->photo())&&defined(my $p2=$hb{$vcfn}->photo())){
-						my $erg=photocompare($p1,$p2);					#Bilder selbst vergleichen
-						if ($erg>0){
-							print "Photos von $vcfn sind verschieden!\n";
-							if ($erg<2){
-								print "  ...aber nur ein bisschen :-)\n";
-							}
-						}
-						else {print "   ...und Photos sind gleich\n";}
-					}
-										
-				}
-				else {print "Keine Photos involviert; Einträge $vcfn sind verschieden.\n";}
-#				my $vcas=$vc->as_string();
-#				my $hb_as=$hb{$vcfn}->as_string();
-#				print "\t\t$vcas\n";
-#				print "\t\t$hb_as\n";
+sub compare_two_lists_of_vcards {
+	foreach my $vcard_a (values(%vcards_a)) {
+		if (defined $vcard_a->fullname()) {
+			if (exists $vcards_b{$vcard_a->fullname()}) { 
+				compare_two_vcards($vcard_a, $vcards_b{$vcard_a->fullname()});
+			} else {
+				print "File a contains vCard '".$vcard_a->fullname()."' which was not found in file b.\n";
 			}
-		} #ende es gibt eine Karte mit gleichem fullname
-		else { #wenn es keine Karte mit gleichem fullname gibt
-			print "Für $vcfn wurde kein Fullname in b gefunden.\n";
+		} else {
+			if (!exists $vcards_b{$vcard_a->as_string()}) {
+				print "File a contains vCard\n".$vcard_a->as_string()."\nwhich was not found in file b.\n";
+			}
 		}
-
-	}
-	else { #in vc gibt es also keinen fullname
-		$vcas=$vc->as_string();
-		if (defined($hb{$vcas})){
-				#prüfen ob vc und hbinhalt gleich sind
-				if (!($vcas eq $hb{$vcas}->as_string())){
-					print "$vcas ist verschieden.\n";
-				}
+	}	
+	
+	foreach my $s (keys(%vcards_b)){
+		if (!exists $vcards_a{$s} ){
+			print "File b contains vCard '$s' which was not found in file a.\n";
 		}
-		else{
-		  print "Für $vcas wurde kein Pendant gefunden.\n";
-		}
-	}
-}	
-
-my @schluessel=keys(%hb);
-my $s;
-foreach $s (@schluessel){
-	if (!defined($ha{$s})){
-		print "In zweiter Datei noch zusätzlich gefunden: $s\n";
 	}
 }
 
-my $z=@a;
-print "\nAnzahl einträge: $z \n";
+sub compare_two_vcards {
+	my ($card_a, $card_b) = @_;
+	
+	if ($card_a->as_string() ne $card_b->as_string()) {
+	    my $fullname = $card_a->fullname();
+	    if (contains_more_than_one_photo($card_a)) {
+	        print "vCard '$fullname' in file a contains more than one image. Not supported. Skipping.\n";
+	        return;
+	    }
+	    if (contains_more_than_one_photo($card_b)) {
+	        print "vCard '$fullname' in file b contains more than one image. Not supported. Skipping.\n";
+	        return;
+	    }
+		
+		my $card_a_with_photos_removed = vcard_as_string_without_photos($card_a);
+		my $card_b_with_photos_removed = vcard_as_string_without_photos($card_b);
 
-exit;
-$vc=$a[264];
-my $vc2=$a[263];
-my $erg= $vc eq $vc2;
-print "Ergebnis: $erg\n";
-print $vc->as_string();
-my $tels=$vc->get('tel');
-my @nodes=@{$tels};
-print $nodes[0]->export_data();
+		if ($card_a_with_photos_removed ne $card_b_with_photos_removed) {
+			print "vCards for '$fullname' are different:\n\n";
+			print "vCard a (photo removed):\n$card_a_with_photos_removed\n";
+			print "vCard b (photo removed):\n$card_b_with_photos_removed\n";
+		}
+		if (!defined $card_a->photo() && defined $card_b->photo()){
+			print "vCard b contains a photo for '$fullname', vCard a does not.\n";
+		}
+		if (defined $card_a->photo() && !defined $card_b->photo()){
+			print "vCard a contains a photo for '$fullname', vCard b does not.\n";
+		}
+		if (defined $card_a->photo() && defined $card_b->photo()) {
+			compare_photos($fullname, $card_a->photo(), $card_b->photo());
+		}
+	}
+}
 
+sub contains_more_than_one_photo {
+	my ($vcard) = @_;
+	if (defined $vcard->photo()) {
+		my $photonodes=$vcard->get('PHOTO');   #Photoknoten holen
+		return @$photonodes > 1;
+	} else {
+		return 0;
+	}
+}
 
-#foreach $vc (@a) {
-#	print $vc->as_string();
-#	my $tels=$vc->get('tel');
+sub vcard_as_string_without_photos {
+	my ($vcard) = @_;
+	my $vcard_as_string = $vcard->as_string();
+	if (defined $vcard->photo()) {
+		my $photonodes = $vcard->get('PHOTO');   #Photoknoten holen
+		my $pattern = $$photonodes[0]->as_string();		   #String als Suchpattern formatieren
+		$pattern = quotemeta($pattern);		   #String als Suchpattern formatieren
+		$vcard_as_string =~ s/\r\n$pattern//;					   #Bild-String aus Karte entfernen
+	}
+	return $vcard_as_string;
+}
 
-#	print $tels->export_data();
-#	my $x=$tels->as_string;
-#}
+sub compare_photos {
+	my ($fullname, $photo_a, $photo_b) = @_;
+	my $result = photo_diff($fullname, $photo_a, $photo_b);
+	if ($result == 1) {
+		print "vCards for '$fullname' are different: Photos in a and b differ slightly.\n";
+    } elsif ($result == 2) {
+		print "vCards for '$fullname' are different: Photos in a and b differ significantly.\n";
+	}
+}
 
+sub photo_diff {
+	my ($name, $photo_content_a, $photo_content_b) = @_;
+	$name =~ s/[^a-zA-Z0-9.\/-]/_/g;
+	my $filename_a = "${name}1.dat";
+	my $filename_b = "${name}2.dat";
+   
+	open(DAT1,"> ${name}1.dat") or die "Failed to open '$filename_a': $!\n";
+	print DAT1 $photo_content_a;
+	close DAT1;
+	open(DAT2,"> ${name}2.dat") or die "Failed to open '$filename_b': $!\n";
+	print DAT2 $photo_content_b;
+	close DAT2;
+
+	my $output = qx/compare -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
+	if ($output == 0) {
+		unlink "${name}1.dat", "${name}2.dat";
+		return 0;   
+	}
+	$output = qx/compare -fuzz 5% -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
+	if ($output == 0){
+		return 1;   
+	} else {
+		return 2;
+	}
+}
