@@ -19,21 +19,15 @@ use strict;
 use Text::vCard::Addressbook;
 use Getopt::Long qw(:config bundling);
 
+
 my $SCRIPT_NAME = "vcf-compare";
 my $VERSION = "0.1";
 my $USAGE = "USAGE: $SCRIPT_NAME <options> file-a.vcf file-b.vcf\n";
 
 
-my $fuzzy_factor = "5%";
-
-GetOptions("version" => sub { print "$SCRIPT_NAME $VERSION\n"; exit; },
-           "help" => sub { print "$USAGE\n"; exit; },
-           "fuzzy-factor=s" => \$fuzzy_factor);
-
-die $USAGE if ($#ARGV+1) != 2;
-
-my %vcards_a = build_hash(extract_vcards_from_file($ARGV[0]));
-my %vcards_b = build_hash(extract_vcards_from_file($ARGV[1]));
+my ($filename_a, $filename_b, $fuzzy_factor) = parse_cmd_line_args();
+my %vcards_a = build_hash(extract_vcards_from_file($filename_a));
+my %vcards_b = build_hash(extract_vcards_from_file($filename_b));
 compare_two_lists_of_vcards(\%vcards_a, \%vcards_b);  
 
 print "\n";
@@ -41,6 +35,18 @@ print "# entries in file a: ".(scalar keys %vcards_a)." \n";
 print "# entries in file b: ".(scalar keys %vcards_b)." \n";
 
 
+
+sub parse_cmd_line_args {
+    my $fuzzy_factor = "5%";
+
+    GetOptions("version" => sub { print "$SCRIPT_NAME $VERSION\n"; exit; },
+               "help" => sub { print "$USAGE\n"; exit; },
+               "fuzzy-factor=s" => \$fuzzy_factor);
+
+    die $USAGE if ($#ARGV+1) != 2;
+    
+    return ($ARGV[0], $ARGV[1], $fuzzy_factor);
+}
 
 sub extract_vcards_from_file {
     return Text::vCard::Addressbook->new({ 'source_file' => shift, } )->vcards();
