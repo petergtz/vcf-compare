@@ -1,6 +1,0 @@
-Dependencies
-=============
-
-Perl Text::vCard::Addressbook (>= 2.13), http://search.cpan.org/~llap/Text-vCard
-Perl Getopt::Long (>= 2.39), http://search.cpan.org/~jv/Getopt-Long-2.39/
-ImageMagick
