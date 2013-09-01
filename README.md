@@ -14,9 +14,9 @@ For run-time dependencies please see next section.
 Dependencies
 =============
 
-Perl Text::vCard::Addressbook (>= 2.13), http://search.cpan.org/~llap/Text-vCard
-Perl Getopt::Long (>= 2.39), http://search.cpan.org/~jv/Getopt-Long-2.39/
-ImageMagick
+* Perl Text::vCard::Addressbook (>= 2.13), http://search.cpan.org/~llap/Text-vCard
+* Perl Getopt::Long (>= 2.39), http://search.cpan.org/~jv/Getopt-Long-2.39/
+* ImageMagick
 
 
 Usage:
