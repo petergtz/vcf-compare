@@ -1,16 +1,16 @@
 #!/usr/bin/perl -w
 
 # Copyright 2013 Michael Goetz, Peter Goetz
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as published by
 # the Free Software Foundation.
-#  
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#    
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
@@ -29,7 +29,7 @@ my $USAGE = "USAGE: $SCRIPT_NAME <options> file-a.vcf file-b.vcf\n";
 my ($filename_a, $filename_b, $fuzzy_factor) = parse_cmd_line_args();
 my %vcards_a = build_hash(extract_vcards_from_file($filename_a));
 my %vcards_b = build_hash(extract_vcards_from_file($filename_b));
-compare_two_lists_of_vcards(\%vcards_a, \%vcards_b);  
+compare_two_lists_of_vcards(\%vcards_a, \%vcards_b);
 
 print "\n";
 print "# entries in file a: ".(scalar keys %vcards_a)." \n";
@@ -45,7 +45,7 @@ sub parse_cmd_line_args {
                "fuzzy-factor=s" => \$fuzzy_factor);
 
     die $USAGE if ($#ARGV+1) != 2;
-    
+
     return ($ARGV[0], $ARGV[1], $fuzzy_factor);
 }
 
@@ -54,129 +54,129 @@ sub extract_vcards_from_file {
 }
 
 sub build_hash {
-	my @vcards = @_;
-	my %result;
-	foreach my $vcard (@vcards){
-		if (defined $vcard->fullname()){
-			$result{$vcard->fullname()} = $vcard;
-		} else {
-			$result{$vcard->as_string()} = $vcard;
-		}
-	}
-	return %result;
+    my @vcards = @_;
+    my %result;
+    foreach my $vcard (@vcards){
+        if (defined $vcard->fullname()){
+            $result{$vcard->fullname()} = $vcard;
+        } else {
+            $result{$vcard->as_string()} = $vcard;
+        }
+    }
+    return %result;
 }
 
 sub compare_two_lists_of_vcards {
     my ($vcards_a, $vcards_b) = @_;
-	foreach my $vcard_a (values %$vcards_a) {
-		if (defined $vcard_a->fullname()) {
-			if (exists $vcards_b->{$vcard_a->fullname()}) { 
-				compare_two_vcards($vcard_a, $vcards_b->{$vcard_a->fullname()});
-			} else {
-				print "File a contains vCard '".$vcard_a->fullname()."' which was not found in file b.\n";
-			}
-		} else {
-			if (!exists $vcards_b->{$vcard_a->as_string()}) {
-				print "File a contains vCard\n".$vcard_a->as_string()."\nwhich was not found in file b.\n";
-			}
-		}
-	}	
-	
-	foreach my $s (keys %$vcards_b){
-		if (!exists $vcards_a->{$s} ){
-			print "File b contains vCard '$s' which was not found in file a.\n";
-		}
-	}
+    foreach my $vcard_a (values %$vcards_a) {
+        if (defined $vcard_a->fullname()) {
+            if (exists $vcards_b->{$vcard_a->fullname()}) {
+                compare_two_vcards($vcard_a, $vcards_b->{$vcard_a->fullname()});
+            } else {
+                print "File a contains vCard '".$vcard_a->fullname()."' which was not found in file b.\n";
+            }
+        } else {
+            if (!exists $vcards_b->{$vcard_a->as_string()}) {
+                print "File a contains vCard\n".$vcard_a->as_string()."\nwhich was not found in file b.\n";
+            }
+        }
+    }
+
+    foreach my $s (keys %$vcards_b){
+        if (!exists $vcards_a->{$s} ){
+            print "File b contains vCard '$s' which was not found in file a.\n";
+        }
+    }
 }
 
 sub compare_two_vcards {
-	my ($card_a, $card_b) = @_;
-	
-	if ($card_a->as_string() ne $card_b->as_string()) {
-	    my $fullname = $card_a->fullname();
-	    if (contains_more_than_one_photo($card_a)) {
-	        print "vCard '$fullname' in file a contains more than one image. Not supported. Skipping.\n";
-	        return;
-	    }
-	    if (contains_more_than_one_photo($card_b)) {
-	        print "vCard '$fullname' in file b contains more than one image. Not supported. Skipping.\n";
-	        return;
-	    }
-		
-		my $card_a_with_photos_removed = vcard_as_string_without_photos($card_a);
-		my $card_b_with_photos_removed = vcard_as_string_without_photos($card_b);
+    my ($card_a, $card_b) = @_;
 
-		if ($card_a_with_photos_removed ne $card_b_with_photos_removed) {
-			print "vCards for '$fullname' are different:\n\n";
-			print "vCard a (photo removed):\n$card_a_with_photos_removed\n";
-			print "vCard b (photo removed):\n$card_b_with_photos_removed\n";
-		}
-		if (!defined $card_a->photo() && defined $card_b->photo()){
-			print "vCard b contains a photo for '$fullname', vCard a does not.\n";
-		}
-		if (defined $card_a->photo() && !defined $card_b->photo()){
-			print "vCard a contains a photo for '$fullname', vCard b does not.\n";
-		}
-		if (defined $card_a->photo() && defined $card_b->photo()) {
-			compare_photos($fullname, $card_a->photo(), $card_b->photo());
-		}
-	}
+    if ($card_a->as_string() ne $card_b->as_string()) {
+        my $fullname = $card_a->fullname();
+        if (contains_more_than_one_photo($card_a)) {
+            print "vCard '$fullname' in file a contains more than one image. Not supported. Skipping.\n";
+            return;
+        }
+        if (contains_more_than_one_photo($card_b)) {
+            print "vCard '$fullname' in file b contains more than one image. Not supported. Skipping.\n";
+            return;
+        }
+
+        my $card_a_with_photos_removed = vcard_as_string_without_photos($card_a);
+        my $card_b_with_photos_removed = vcard_as_string_without_photos($card_b);
+
+        if ($card_a_with_photos_removed ne $card_b_with_photos_removed) {
+            print "vCards for '$fullname' are different:\n\n";
+            print "vCard a (photo removed):\n$card_a_with_photos_removed\n";
+            print "vCard b (photo removed):\n$card_b_with_photos_removed\n";
+        }
+        if (!defined $card_a->photo() && defined $card_b->photo()){
+            print "vCard b contains a photo for '$fullname', vCard a does not.\n";
+        }
+        if (defined $card_a->photo() && !defined $card_b->photo()){
+            print "vCard a contains a photo for '$fullname', vCard b does not.\n";
+        }
+        if (defined $card_a->photo() && defined $card_b->photo()) {
+            compare_photos($fullname, $card_a->photo(), $card_b->photo());
+        }
+    }
 }
 
 sub contains_more_than_one_photo {
-	my ($vcard) = @_;
-	if (defined $vcard->photo()) {
-		my $photonodes=$vcard->get('PHOTO');
-		return @$photonodes > 1;
-	} else {
-		return 0;
-	}
+    my ($vcard) = @_;
+    if (defined $vcard->photo()) {
+        my $photonodes=$vcard->get('PHOTO');
+        return @$photonodes > 1;
+    } else {
+        return 0;
+    }
 }
 
 sub vcard_as_string_without_photos {
-	my ($vcard) = @_;
-	my $vcard_as_string = $vcard->as_string();
-	if (defined $vcard->photo()) {
-		my $photonodes = $vcard->get('PHOTO');   
-		my $pattern = $$photonodes[0]->as_string();		   
-		$pattern = quotemeta($pattern);		   
-		$vcard_as_string =~ s/\r\n$pattern//;
-	}
-	return $vcard_as_string;
+    my ($vcard) = @_;
+    my $vcard_as_string = $vcard->as_string();
+    if (defined $vcard->photo()) {
+        my $photonodes = $vcard->get('PHOTO');
+        my $pattern = $$photonodes[0]->as_string();
+        $pattern = quotemeta($pattern);
+        $vcard_as_string =~ s/\r\n$pattern//;
+    }
+    return $vcard_as_string;
 }
 
 sub compare_photos {
-	my ($fullname, $photo_a, $photo_b) = @_;
-	my $result = photo_diff($fullname, $photo_a, $photo_b);
-	if ($result == 1) {
-		print "vCards for '$fullname' are different: Photos in a and b differ slightly.\n";
+    my ($fullname, $photo_a, $photo_b) = @_;
+    my $result = photo_diff($fullname, $photo_a, $photo_b);
+    if ($result == 1) {
+        print "vCards for '$fullname' are different: Photos in a and b differ slightly.\n";
     } elsif ($result == 2) {
-		print "vCards for '$fullname' are different: Photos in a and b differ significantly.\n";
-	}
+        print "vCards for '$fullname' are different: Photos in a and b differ significantly.\n";
+    }
 }
 
 sub photo_diff {
-	my ($name, $photo_content_a, $photo_content_b) = @_;
-	$name =~ s/[^a-zA-Z0-9.\/-]/_/g;
-	my $filename_a = "${name}1.dat";
-	my $filename_b = "${name}2.dat";
-   
-	open(DAT1,"> ${name}1.dat") or die "Failed to open '$filename_a': $!\n";
-	print DAT1 $photo_content_a;
-	close DAT1;
-	open(DAT2,"> ${name}2.dat") or die "Failed to open '$filename_b': $!\n";
-	print DAT2 $photo_content_b;
-	close DAT2;
+    my ($name, $photo_content_a, $photo_content_b) = @_;
+    $name =~ s/[^a-zA-Z0-9.\/-]/_/g;
+    my $filename_a = "${name}1.dat";
+    my $filename_b = "${name}2.dat";
 
-	my $output = qx/compare -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
-	if ($output == 0) {
-		unlink "${name}1.dat", "${name}2.dat";
-		return 0;   
-	}
-	$output = qx/compare -fuzz $fuzzy_factor -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
-	if ($output == 0){
-		return 1;   
-	} else {
-		return 2;
-	}
+    open(DAT1,"> ${name}1.dat") or die "Failed to open '$filename_a': $!\n";
+    print DAT1 $photo_content_a;
+    close DAT1;
+    open(DAT2,"> ${name}2.dat") or die "Failed to open '$filename_b': $!\n";
+    print DAT2 $photo_content_b;
+    close DAT2;
+
+    my $output = qx/compare -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
+    if ($output == 0) {
+        unlink "${name}1.dat", "${name}2.dat";
+        return 0;
+    }
+    $output = qx/compare -fuzz $fuzzy_factor -metric AE $filename_a $filename_b ${name}.diff.png 2>&1/;
+    if ($output == 0){
+        return 1;
+    } else {
+        return 2;
+    }
 }
