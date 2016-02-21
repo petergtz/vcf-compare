@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-#!/usr/bin/perl -w
-
 # Copyright 2013 Peter Goetz
 # 
 # This program is free software; you can redistribute it and/or modify
